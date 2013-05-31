@@ -1,7 +1,7 @@
 /**
  * SQL Rest Adapter for Titanium Alloy
  * @author Mads Møller
- * @version 0.1.21
+ * @version 0.1.22
  * Copyright Napp ApS
  * www.napp.dk
  */
@@ -120,7 +120,7 @@ function Migrator(config, transactionDb) {
 
 function apiCall(_options, _callback) {
 	//adding localOnly
-	if (Ti.Network.online && _.isUndefined(_options.localOnly)) {
+	if (Ti.Network.online && !_options.localOnly) {
 		//we are online - talk with Rest API
 
 		var xhr = Ti.Network.createHTTPClient({
@@ -173,6 +173,7 @@ function Sync(method, model, opts) {
 	var lastModifiedColumn = model.config.adapter.lastModifiedColumn;
 	var parentNode = model.config.parentNode;
 	var useStrictValidation = model.config.useStrictValidation;
+	var initFetchWithLocalData = model.config.initFetchWithLocalData;
 	var isCollection = (model instanceof Backbone.Collection) ? true : false;
 
 	var singleModelRequest = null;
@@ -302,6 +303,14 @@ function Sync(method, model, opts) {
 				Ti.API.info("[SQL REST API] options: ");
 				Ti.API.info(params);
 			}
+
+			if(initFetchWithLocalData && !params.localOnly){
+				// read local data before receiving server data
+				resp = readSQL();
+				_.isFunction(params.success) && params.success(resp);
+				model.trigger("fetch", {serverData: false});
+			}
+
 			apiCall(params, function(_response) {
 				if (_response.success) {
 					var data = parseJSON(_response, parentNode);
@@ -332,11 +341,6 @@ function Sync(method, model, opts) {
 					model.trigger("fetch", {serverData: true});
 				}
 			});
-
-            // read local data before receiving server data
-            resp = readSQL();
-            _.isFunction(params.success) && params.success(resp);
-            model.trigger("fetch", {serverData: false});
 
 			break;
 
