@@ -339,6 +339,8 @@ function Sync(method, model, opts) {
 					resp = readSQL();
 					_.isFunction(params.success) && params.success(resp);
 					model.trigger("fetch", {serverData: true});
+				} else {
+				    _.isFunction(params.error) && params.error(_response);
 				}
 			});
 
