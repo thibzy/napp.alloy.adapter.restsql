@@ -292,7 +292,7 @@ function Sync(method, model, opts) {
 			}
 
 			if(params.search){ // search mode
-                params.url = params.url + "/search/" + Ti.Network.encodeURIComponent(params.search);
+                params.url = params.url + "/search/q=" + Ti.Network.encodeURIComponent(params.search);
             }
 
 			if(params.urlparams){ // build url with parameters
