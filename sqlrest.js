@@ -1,7 +1,7 @@
 /**
  * SQL Rest Adapter for Titanium Alloy
  * @author Mads Møller
- * @version 0.1.22
+ * @version 0.1.26
  * Copyright Napp ApS
  * www.napp.dk
  */
@@ -176,6 +176,7 @@ function Sync(method, model, opts) {
 	var initFetchWithLocalData = model.config.initFetchWithLocalData;
 	var isCollection = (model instanceof Backbone.Collection) ? true : false;
 
+
 	var singleModelRequest = null;
 	if(lastModifiedColumn){
 		if(opts.sql && opts.sql.where ){
@@ -272,11 +273,11 @@ function Sync(method, model, opts) {
 				if (_response.success) {
 					var data = parseJSON(_response, parentNode);
 					//Rest API should return a new model id.
-					resp = createSQL(data);
+					resp = saveData(data);
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//offline or error
-					resp = createSQL();
+					resp = saveData();
 					if(_.isUndefined(_response.offline)){
 						_.isFunction(params.error) && params.error(resp);
 					} else {
@@ -304,7 +305,7 @@ function Sync(method, model, opts) {
 				Ti.API.info(params);
 			}
 
-			if(initFetchWithLocalData && !params.localOnly){
+			if(params.initFetchWithLocalData || (initFetchWithLocalData && !params.localOnly) ){
 				// read local data before receiving server data
 				resp = readSQL();
 				_.isFunction(params.success) && params.success(resp);
@@ -315,32 +316,22 @@ function Sync(method, model, opts) {
 				if (_response.success) {
 					var data = parseJSON(_response, parentNode);
 					if(_.isUndefined(params.localOnly)){ //we dont want to manipulate the data on localOnly requests
-						if(!_.isArray(data)){ //its a model
-							if(!_.isUndefined(data["is_deleted"])){ //delete item
-								deleteSQL(data[model.idAttribute]);
-							} else if(sqlFindItem(data[model.idAttribute]).length == 1){
-								updateSQL(data); //item exists - update it
-							} else {
-								createSQL(data); //write remote data to local sql
-							}
-						} else { //its an array of models
-							var currentModels = sqlCurrentModels();
-							for (var i in data) {
-								if(!_.isUndefined(data["is_deleted"])){ //delete item
-									deleteSQL(data[i][model.idAttribute]);
-								} else if (_.indexOf(currentModels, data[i][model.idAttribute]) != -1) {
-									updateSQL(data[i]); //item exists - update it
-								} else {
-									createSQL(data[i]); //write remote data to local sql
-								}
-							}
-						}
+						saveData(data);
 					}
 					resp = readSQL();
 					_.isFunction(params.success) && params.success(resp);
 					model.trigger("fetch", {serverData: true});
 				} else {
-				    _.isFunction(params.error) && params.error(_response);
+					//error or offline - read local data
+					resp = readSQL();
+					if(_.isUndefined(_response.offline)){
+						//error
+						_.isFunction(params.error) && params.error(resp);
+					} else {
+						//offline - still a data success
+						_.isFunction(params.success) && params.success(resp);
+						model.trigger("fetch", {serverData: false});
+					}
 				}
 			});
 
@@ -373,21 +364,11 @@ function Sync(method, model, opts) {
 			apiCall(params, function(_response) {
 				if (_response.success) {
 					var data = parseJSON(_response, parentNode);
-					var currentModels = sqlCurrentModels();
-					if (_.indexOf(currentModels, data[model.idAttribute]) != -1) {
-						resp = updateSQL(data); //item exists - update it
-					} else {
-						resp = createSQL(data); //write remote data to local sql
-					}
+					resp = saveData(data);
 					_.isFunction(params.success) && params.success(resp);
 				} else {
-					//error or offline - use local data
-					var currentModels = sqlCurrentModels();
-					if (_.indexOf(currentModels, data[model.idAttribute]) != -1) {
-						resp = updateSQL(); //item exists - update it
-					} else {
-						resp = createSQL(); //write remote data to local sql
-					}
+					//error or offline - save & use local data
+					resp = saveData();
 					if(_.isUndefined(_response.offline)){
 						//error
 						_.isFunction(params.error) && params.error(resp);
@@ -432,6 +413,36 @@ function Sync(method, model, opts) {
 	/////////////////////////////////////////////
 	//SQL INTERFACE
 	/////////////////////////////////////////////
+	function saveData(data){
+		if(!data && !isCollection){
+			data = model.toJSON();
+		}
+		if(!data){
+			// its empty
+			return;
+		}
+		if(!_.isArray(data)){ // its a model
+			if(!_.isUndefined(data["is_deleted"])){ //delete item
+				deleteSQL(data[model.idAttribute]);
+			} else if(sqlFindItem(data[model.idAttribute]).length == 1){
+				return updateSQL(data); //item exists - update it
+			} else {
+				return createSQL(data); //write data to local sql
+			}
+		} else { //its an array of models
+			var currentModels = sqlCurrentModels();
+			for (var i in data) {
+				if(!_.isUndefined(data[i]["is_deleted"])){ //delete item
+					deleteSQL(data[i][model.idAttribute]);
+				} else if (_.indexOf(currentModels, data[i][model.idAttribute]) != -1) {
+					updateSQL(data[i]); //item exists - update it
+				} else {
+					createSQL(data[i]); //write data to local sql
+				}
+			}
+		}
+	}
+
 	function createSQL(data) {
 		var attrObj = {};
 
@@ -454,7 +465,7 @@ function Sync(method, model, opts) {
 			if (model.idAttribute === ALLOY_ID_DEFAULT) {
 				// alloy-created GUID field
 				attrObj.id = util.guid();
-				attrObj[model.idAttribute] = model.id;
+				attrObj[model.idAttribute] = attrObj.id;
 			} else {
 				// idAttribute not assigned by alloy. Leave it empty and
 				// allow sqlite to process as null, which is the
@@ -690,7 +701,7 @@ function Sync(method, model, opts) {
 	function parseJSON(_response, parentNode){
 		var data = JSON.parse(_response.responseText);
 		if(!_.isUndefined(parentNode)){
-			data = traverseProperties(data, parentNode);
+			data = _.isFunction(parentNode) ? parentNode(data) : traverseProperties(data, parentNode);
 		}
 		if(DEBUG){
 			Ti.API.info("[SQL REST API] server response: ");

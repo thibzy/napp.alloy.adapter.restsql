@@ -34,7 +34,7 @@ Simple add the following to your model in `PROJECT_FOLDER/app/models/`.
 			"headers": { //your custom headers
 	            "Accept": "application/vnd.stackmob+json; version=0",
 		        "X-StackMob-API-Key": "your-stackmob-key"
-	        },
+	        }
 		},
 		extendModel : function(Model) {
 			_.extend(Model.prototype, {});
@@ -89,6 +89,34 @@ It has support for nested objects.
 		...
 		"parentNode" : "news.domestic"
 	}
+
+You can also specify this as a function instead to allow custom parsing the feed. Here is an example: 
+
+*Feed:* 
+http://www.google.com/calendar/feeds/developer-calendar@google.com/public/full?alt=json&orderby=starttime&max-results=15&singleevents=true&sortorder=ascending&futureevents=true
+
+*Custom parsing:*
+
+```javascript
+parentNode: function (data) {
+	var entries = [];
+
+	_.each(data.feed.entry, function(_entry) {
+		var entry = {};
+
+		entry.id = _entry.id.$t;
+		entry.startTime = _entry.gd$when[0].startTime;
+		entry.endTime = _entry.gd$when[0].endTime;
+		entry.title = _entry.title.$t;
+		entry.content = _entry.content.$t;
+
+		entries.push(entry);
+	});
+
+	return entries;
+}
+```
+
 
 ### useStrictValidation
 
@@ -151,6 +179,19 @@ collection.fetch({
 ```
 
 ## Changelog
+
+**v0.1.26** 
+Added support parentNode as a function for custom parsing. thanks @FokkeZB
+
+**v0.1.25**  
+More bugfixes
+
+**v0.1.24**  
+Bugfix: Auto ID's are not stored when idAttribute is not set  
+
+**v0.1.23**  
+Added `initFetchWithLocalData` to fetch params.   
+Better logic for update/create. Now local db handles duplicate ids.   
 
 **v0.1.22**  
 Added `initFetchWithLocalData` for fetch local data before remote.  
