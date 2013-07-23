@@ -277,7 +277,7 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//offline or error
-					resp = saveData();
+					// resp = saveData();
 					if(_.isUndefined(_response.offline)){
 						_.isFunction(params.error) && params.error(resp);
 					} else {
@@ -368,7 +368,7 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//error or offline - save & use local data
-					resp = saveData();
+					// resp = saveData();
 					if(_.isUndefined(_response.offline)){
 						//error
 						_.isFunction(params.error) && params.error(resp);
@@ -397,7 +397,7 @@ function Sync(method, model, opts) {
 					resp = deleteSQL();
 					_.isFunction(params.success) && params.success(resp);
 				} else {
-					resp = deleteSQL();
+					// resp = deleteSQL();
 					if(_.isUndefined(_response.offline)){
 						//error
 						_.isFunction(params.error) && params.error(resp);
@@ -745,7 +745,7 @@ function _buildQuery(table, opts) {
 	var sql = 'SELECT *';
 	if (opts.select) {
 		sql = 'SELECT ';
-		if ( typeof opts.select == 'array') {
+		if ( _.isArray(opts.select) ) {
 			sql += opts.select.join(", ");
 		} else {
 			sql += opts.select;
@@ -756,12 +756,12 @@ function _buildQuery(table, opts) {
 
 	if (opts.where) {
 		var where;
-		if ( typeof opts.where === 'object') {
+		if (_.isArray(opts.where)) {
+            where = opts.where.join(' AND ');
+        } else if ( typeof opts.where === 'object') {
 			where = [];
 			where = whereBuilder(where, opts.where);
 			where = where.join(' AND ');
-		} else if ( typeof opts.where === 'array') {
-			where = opts.where.join(' AND ');
 		} else {
 			where = opts.where;
 		}
@@ -772,7 +772,7 @@ function _buildQuery(table, opts) {
 	}
 	if (opts.orderBy) {
 		var order;
-		if ( typeof opts.orderBy === 'array') {
+		if ( _.isArray(opts.orderBy)) {
 			order = opts.orderBy.join(', ');
 		} else {
 			order = opts.orderBy;
