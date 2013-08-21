@@ -282,6 +282,7 @@ function Sync(method, model, opts) {
 						_.isFunction(params.error) && params.error(resp);
 					} else {
 						//offline - still a data success
+						resp = saveData();
 						_.isFunction(params.success) && params.success(resp);
 					}
 				}
@@ -374,6 +375,7 @@ function Sync(method, model, opts) {
 						_.isFunction(params.error) && params.error(resp);
 					} else {
 						//offline - still a data success
+						resp = saveData();
 						_.isFunction(params.success) && params.success(resp);
 					}
 				}
@@ -403,6 +405,7 @@ function Sync(method, model, opts) {
 						_.isFunction(params.error) && params.error(resp);
 					} else {
 						//offline - still a data success
+						resp = deleteSQL();
 						_.isFunction(params.success) && params.success(resp);
 					}
 				}
