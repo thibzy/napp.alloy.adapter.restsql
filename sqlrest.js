@@ -1,7 +1,7 @@
 /**
  * SQL Rest Adapter for Titanium Alloy
  * @author Mads Møller
- * @version 0.1.26
+ * @version 0.1.30
  * Copyright Napp ApS
  * www.napp.dk
  */
@@ -34,88 +34,88 @@ var cache = {
 //               mapped back to Backbone.js for its update and
 //               delete operations.
 function Migrator(config, transactionDb) {
-    this.db = transactionDb;
-    this.dbname = config.adapter.db_name;
-    this.table = config.adapter.collection_name;
-    this.idAttribute = config.adapter.idAttribute;
-    this.column = function(name) {
-        var parts = name.split(/\s+/), type = parts[0];
-        switch (type.toLowerCase()) {
-          case "string":
-          case "varchar":
-          case "date":
-          case "datetime":
-            Ti.API.warn("\"" + type + "\" is not a valid sqlite field, using TEXT instead");
-          case "text":
-            type = "TEXT";
-            break;
-          case "int":
-          case "tinyint":
-          case "smallint":
-          case "bigint":
-          case "boolean":
-            Ti.API.warn("\"" + type + "\" is not a valid sqlite field, using INTEGER instead");
-          case "integer":
-            type = "INTEGER";
-            break;
-          case "double":
-          case "float":
-          case "decimal":
-          case "number":
-            Ti.API.warn("\"" + name + "\" is not a valid sqlite field, using REAL instead");
-          case "real":
-            type = "REAL";
-            break;
-          case "blob":
-            type = "BLOB";
-            break;
-          case "null":
-            type = "NULL";
-            break;
-          default:
-            type = "TEXT";
-        }
-        parts[0] = type;
-        return parts.join(" ");
-    };
-    this.createTable = function(config) {
-        var columns = [], found = !1;
-        for (var k in config.columns) {
-            k === this.idAttribute && (found = !0);
-            columns.push(k + " " + this.column(config.columns[k]));
-        }
-        !found && this.idAttribute === ALLOY_ID_DEFAULT && columns.push(ALLOY_ID_DEFAULT + " TEXT");
-        var sql = "CREATE TABLE IF NOT EXISTS " + this.table + " ( " + columns.join(",") + ")";
-        this.db.execute(sql);
-    };
-    this.dropTable = function(config) {
-        this.db.execute("DROP TABLE IF EXISTS " + this.table);
-    };
-    this.insertRow = function(columnValues) {
-        var columns = [], values = [], qs = [], found = !1;
-        for (var key in columnValues) {
-            key === this.idAttribute && (found = !0);
-            columns.push(key);
-            values.push(columnValues[key]);
-            qs.push("?");
-        }
-        if (!found && this.idAttribute === ALLOY_ID_DEFAULT) {
-            columns.push(this.idAttribute);
-            values.push(util.guid());
-            qs.push("?");
-        }
-        this.db.execute("INSERT INTO " + this.table + " (" + columns.join(",") + ") VALUES (" + qs.join(",") + ");", values);
-    };
-    this.deleteRow = function(columns) {
-        var sql = "DELETE FROM " + this.table, keys = _.keys(columns), len = keys.length, conditions = [], values = [];
-        len && (sql += " WHERE ");
-        for (var i = 0; i < len; i++) {
-            conditions.push(keys[i] + " = ?");
-            values.push(columns[keys[i]]);
-        }
-        sql += conditions.join(" AND ");
-        this.db.execute(sql, values);
-    };
+	this.db = transactionDb;
+	this.dbname = config.adapter.db_name;
+	this.table = config.adapter.collection_name;
+	this.idAttribute = config.adapter.idAttribute;
+	this.column = function(name) {
+		var parts = name.split(/\s+/), type = parts[0];
+		switch (type.toLowerCase()) {
+			case "string":
+			case "varchar":
+			case "date":
+			case "datetime":
+				Ti.API.warn("\"" + type + "\" is not a valid sqlite field, using TEXT instead");
+			case "text":
+				type = "TEXT";
+				break;
+			case "int":
+			case "tinyint":
+			case "smallint":
+			case "bigint":
+			case "boolean":
+				Ti.API.warn("\"" + type + "\" is not a valid sqlite field, using INTEGER instead");
+			case "integer":
+				type = "INTEGER";
+				break;
+			case "double":
+			case "float":
+			case "decimal":
+			case "number":
+				Ti.API.warn("\"" + name + "\" is not a valid sqlite field, using REAL instead");
+			case "real":
+				type = "REAL";
+				break;
+			case "blob":
+				type = "BLOB";
+				break;
+			case "null":
+				type = "NULL";
+				break;
+			default:
+				type = "TEXT";
+		}
+		parts[0] = type;
+		return parts.join(" ");
+	};
+	this.createTable = function(config) {
+		var columns = [], found = !1;
+		for (var k in config.columns) {
+			k === this.idAttribute && ( found = !0);
+			columns.push(k + " " + this.column(config.columns[k]));
+		}
+		!found && this.idAttribute === ALLOY_ID_DEFAULT && columns.push(ALLOY_ID_DEFAULT + " TEXT");
+		var sql = "CREATE TABLE IF NOT EXISTS " + this.table + " ( " + columns.join(",") + ")";
+		this.db.execute(sql);
+	};
+	this.dropTable = function(config) {
+		this.db.execute("DROP TABLE IF EXISTS " + this.table);
+	};
+	this.insertRow = function(columnValues) {
+		var columns = [], values = [], qs = [], found = !1;
+		for (var key in columnValues) {
+			key === this.idAttribute && ( found = !0);
+			columns.push(key);
+			values.push(columnValues[key]);
+			qs.push("?");
+		}
+		if (!found && this.idAttribute === ALLOY_ID_DEFAULT) {
+			columns.push(this.idAttribute);
+			values.push(util.guid());
+			qs.push("?");
+		}
+		this.db.execute("INSERT INTO " + this.table + " (" + columns.join(",") + ") VALUES (" + qs.join(",") + ");", values);
+	};
+	this.deleteRow = function(columns) {
+		var sql = "DELETE FROM " + this.table, keys = _.keys(columns), len = keys.length, conditions = [], values = [];
+		len && (sql += " WHERE ");
+		for (var i = 0; i < len; i++) {
+			conditions.push(keys[i] + " = ?");
+			values.push(columns[keys[i]]);
+		}
+		sql += conditions.join(" AND ");
+		this.db.execute(sql, values);
+	};
 }
 
 function apiCall(_options, _callback) {
@@ -131,23 +131,49 @@ function apiCall(_options, _callback) {
 		xhr.open(_options.type, _options.url);
 
 		xhr.onload = function() {
+			var responseJSON, success = true, error;
+			
+			// parse JSON
+			try {
+				responseJSON = JSON.parse(xhr.responseText);
+			} catch (e) {
+				Ti.API.error('[SQL REST API] apiCall ERROR: ' + e.message);
+				Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
+				success = false;
+				error = e.message;
+			}
 			_callback({
-				'success' : true,
-				'responseText' : xhr.responseText || null,
-				'responseData' : xhr.responseData || null
+				success : success,
+				status : success ? (xhr.status == 200 ? "ok" : xhr.status) : 'error',
+				code : xhr.status,
+				data: error,
+				responseText : xhr.responseText || null,
+				responseJSON : responseJSON || null
 			});
 		};
 
 		//Handle error
 		xhr.onerror = function() {
+			var responseJSON;
+			try {
+				responseJSON = JSON.parse(xhr.responseText);
+			} catch (e) {
+			}
+
 			_callback({
-				'success' : false,
-				'responseText' : xhr.responseText
+				success : false,
+				status : "error",
+				code : xhr.status,
+				data : e.error,
+				responseText : xhr.responseText,
+				responseJSON : responseJSON || null
 			});
+			
 			Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
 			Ti.API.error('[SQL REST API] apiCall ERROR CODE: ' + xhr.status);
-		}
-
+		};
+		
+		// headers
 		for (var header in _options.headers) {
 			xhr.setRequestHeader(header, _options.headers[header]);
 		}
@@ -155,44 +181,45 @@ function apiCall(_options, _callback) {
 		if (_options.beforeSend) {
 			_options.beforeSend(xhr);
 		}
+		
 		xhr.send(_options.data || null);
 	} else {
 		//we are offline
 		_callback({
-			'success' : false,
-			'responseText' : null,
-			'offline' : true
+			success : false,
+			responseText : null,
+			offline : true
 		});
 	}
 }
 
 function Sync(method, model, opts) {
 	var table = model.config.adapter.collection_name, columns = model.config.columns, dbName = model.config.adapter.db_name || ALLOY_DB_DEFAULT, resp = null, db;
-	model.idAttribute = model.config.adapter.idAttribute; //fix for collection
+	model.idAttribute = model.config.adapter.idAttribute;
+	//fix for collection
 	var DEBUG = model.config.debug;
 	var lastModifiedColumn = model.config.adapter.lastModifiedColumn;
 	var parentNode = model.config.parentNode;
 	var useStrictValidation = model.config.useStrictValidation;
 	var initFetchWithLocalData = model.config.initFetchWithLocalData;
-	var isCollection = (model instanceof Backbone.Collection) ? true : false;
-
+	var isCollection = ( model instanceof Backbone.Collection) ? true : false;
 
 	var singleModelRequest = null;
-	if(lastModifiedColumn){
-		if(opts.sql && opts.sql.where ){
+	if (lastModifiedColumn) {
+		if (opts.sql && opts.sql.where) {
 			singleModelRequest = opts.sql.where[model.idAttribute];
 		}
-		if(!singleModelRequest && opts.data && opts.data[model.idAttribute]){
+		if (!singleModelRequest && opts.data && opts.data[model.idAttribute]) {
 			singleModelRequest = opts.data[model.idAttribute];
 		}
 	}
 
 	//REST API
 	var methodMap = {
-		'create' 	: 'POST',
-		'read' 		: 'GET',
-		'update' 	: 'PUT',
-		'delete' 	: 'DELETE'
+		'create' : 'POST',
+		'read' : 'GET',
+		'update' : 'PUT',
+		'delete' : 'DELETE'
 	};
 
 	var type = methodMap[method];
@@ -203,20 +230,19 @@ function Sync(method, model, opts) {
 	params.headers = params.headers || {};
 
 	// Send our own custom headers
-	if(model.config.hasOwnProperty("headers")) {
-		for(header in model.config.headers) {
+	if (model.config.hasOwnProperty("headers")) {
+		for (header in model.config.headers) {
 			params.headers[header] = model.config.headers[header];
 		}
 	}
 
-	if(lastModifiedColumn && _.isUndefined(params.disableLastModified)){
+	if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 		//send last modified model datestamp to the remote server
 		var lastModifiedValue = "";
 		try {
 			lastModifiedValue = sqlLastModifiedItem();
-		}
-		catch(e) {
-			if(DEBUG){
+		} catch(e) {
+			if (DEBUG) {
 				Ti.API.debug("[SQL REST API] LASTMOD SQL FAILED: ");
 			}
 		}
@@ -249,7 +275,7 @@ function Sync(method, model, opts) {
 				params.data._method = type;
 			params.type = 'POST';
 			params.beforeSend = function(xhr) {
-				params.headers['X-HTTP-Method-Override'] = type
+				params.headers['X-HTTP-Method-Override'] = type;
 			};
 		}
 	}
@@ -257,7 +283,7 @@ function Sync(method, model, opts) {
 	//json data transfers
 	params.headers['Content-Type'] = 'application/json';
 
-	if(DEBUG){
+	if (DEBUG) {
 		Ti.API.debug("[SQL REST API] REST METHOD: " + method);
 	}
 
@@ -265,7 +291,7 @@ function Sync(method, model, opts) {
 		case 'create':
 			// convert to string for API call
 			params.data = JSON.stringify(model.toJSON());
-			if(DEBUG){
+			if (DEBUG) {
 				Ti.API.info("[SQL REST API] options: ");
 				Ti.API.info(params);
 			}
@@ -277,8 +303,9 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//offline or error
-					// resp = saveData();
-					if(_.isUndefined(_response.offline)){
+					resp = saveData();
+					if (_.isUndefined(_response.offline)) {
+						// error
 						_.isFunction(params.error) && params.error(resp);
 					} else {
 						//offline - still a data success
@@ -289,43 +316,50 @@ function Sync(method, model, opts) {
 			});
 			break;
 		case 'read':
-			if (model.id) { // find model by id
+			if (model.id) {
+				// find model by id
 				params.url = params.url + '/' + model.id;
 			}
 
-			if(params.search){ // search mode
-                params.url = params.url + "/search/q=" + Ti.Network.encodeURIComponent(params.search);
-            }
+			if (params.search) {
+				// search mode
+				params.returnExactServerResponse = true;
+				params.url = params.url + "/search/" + Ti.Network.encodeURIComponent(params.search);
+			}
 
-			if(params.urlparams){ // build url with parameters
-                params.url = encodeData(params.urlparams, params.url);
-            }
+			if (params.urlparams) {
+				// build url with parameters
+				params.url = encodeData(params.urlparams, params.url);
+			}
 
-			if(DEBUG){
+			if (DEBUG) {
 				Ti.API.info("[SQL REST API] options: ");
 				Ti.API.info(params);
 			}
 
-			if(params.initFetchWithLocalData || (initFetchWithLocalData && !params.localOnly) ){
+			if (!params.localOnly && (params.initFetchWithLocalData || initFetchWithLocalData)) {
 				// read local data before receiving server data
 				resp = readSQL();
 				_.isFunction(params.success) && params.success(resp);
-				model.trigger("fetch", {serverData: false});
+				model.trigger("fetch", {
+					serverData : false
+				});
 			}
 
 			apiCall(params, function(_response) {
 				if (_response.success) {
 					var data = parseJSON(_response, parentNode);
-					if(_.isUndefined(params.localOnly)){ //we dont want to manipulate the data on localOnly requests
+					if (_.isUndefined(params.localOnly)) {
+						//we dont want to manipulate the data on localOnly requests
 						saveData(data);
 					}
-					resp = readSQL();
+					resp = readSQL(data);
 					_.isFunction(params.success) && params.success(resp);
 					model.trigger("fetch", {serverData: true});
 				} else {
 					//error or offline - read local data
 					resp = readSQL();
-					if(_.isUndefined(_response.offline)){
+					if (_.isUndefined(_response.offline)) {
 						//error
 						_.isFunction(params.error) && params.error(resp);
 					} else {
@@ -346,19 +380,19 @@ function Sync(method, model, opts) {
 			}
 
 			// setup the url & data
-			if(_.indexOf(params.url, "?") == -1) {
+			if (_.indexOf(params.url, "?") == -1) {
 				params.url = params.url + '/' + model.id;
 			} else {
 				var str = params.url.split("?");
 				params.url = str[0] + '/' + model.id + "?" + str[1];
 			}
 
-			if(params.urlparams){
-                params.url = encodeData(params.urlparams, params.url);
-            }
+			if (params.urlparams) {
+				params.url = encodeData(params.urlparams, params.url);
+			}
 
 			params.data = JSON.stringify(model.toJSON());
-			if(DEBUG){
+			if (DEBUG) {
 				Ti.API.info("[SQL REST API] options: ");
 				Ti.API.info(params);
 			}
@@ -369,8 +403,8 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//error or offline - save & use local data
-					// resp = saveData();
-					if(_.isUndefined(_response.offline)){
+					resp = saveData();
+					if (_.isUndefined(_response.offline)) {
 						//error
 						_.isFunction(params.error) && params.error(resp);
 					} else {
@@ -389,7 +423,7 @@ function Sync(method, model, opts) {
 			}
 			params.url = params.url + '/' + model.id;
 
-			if(DEBUG){
+			if (DEBUG) {
 				Ti.API.info("[SQL REST API] options: ");
 				Ti.API.info(params);
 			}
@@ -399,8 +433,8 @@ function Sync(method, model, opts) {
 					resp = deleteSQL();
 					_.isFunction(params.success) && params.success(resp);
 				} else {
-					// resp = deleteSQL();
-					if(_.isUndefined(_response.offline)){
+					resp = deleteSQL();
+					if (_.isUndefined(_response.offline)) {
 						//error
 						_.isFunction(params.error) && params.error(resp);
 					} else {
@@ -416,31 +450,37 @@ function Sync(method, model, opts) {
 	/////////////////////////////////////////////
 	//SQL INTERFACE
 	/////////////////////////////////////////////
-	function saveData(data){
-		if(!data && !isCollection){
+	function saveData(data) {
+		if (!data && !isCollection) {
 			data = model.toJSON();
 		}
-		if(!data){
+		if (!data) {
 			// its empty
 			return;
 		}
-		if(!_.isArray(data)){ // its a model
-			if(!_.isUndefined(data["is_deleted"])){ //delete item
+		if (!_.isArray(data)) {// its a model
+			if (!_.isUndefined(data["is_deleted"])) {
+				//delete item
 				deleteSQL(data[model.idAttribute]);
-			} else if(sqlFindItem(data[model.idAttribute]).length == 1){
-				return updateSQL(data); //item exists - update it
+			} else if (sqlFindItem(data[model.idAttribute]).length == 1) {
+				//item exists - update it
+				return updateSQL(data);
 			} else {
-				return createSQL(data); //write data to local sql
+				//write data to local sql
+				return createSQL(data);
 			}
-		} else { //its an array of models
+		} else {//its an array of models
 			var currentModels = sqlCurrentModels();
 			for (var i in data) {
-				if(!_.isUndefined(data[i]["is_deleted"])){ //delete item
+				if (!_.isUndefined(data[i]["is_deleted"])) {
+					//delete item
 					deleteSQL(data[i][model.idAttribute]);
 				} else if (_.indexOf(currentModels, data[i][model.idAttribute]) != -1) {
-					updateSQL(data[i]); //item exists - update it
+					//item exists - update it
+					updateSQL(data[i]);
 				} else {
-					createSQL(data[i]); //write data to local sql
+					//write data to local sql
+					createSQL(data[i]);
 				}
 			}
 		}
@@ -449,15 +489,15 @@ function Sync(method, model, opts) {
 	function createSQL(data) {
 		var attrObj = {};
 
-		if(DEBUG){
+		if (DEBUG) {
 			Ti.API.debug("[SQL REST API] createSQL data:");
 			Ti.API.debug(data);
 		}
 
-		if(data){
+		if (data) {
 			attrObj = data;
 		} else {
-			if(!isCollection){
+			if (!isCollection) {
 				attrObj = model.toJSON();
 			} else {
 				Ti.API.error("[SQL REST API] Its a collection - error !");
@@ -478,30 +518,31 @@ function Sync(method, model, opts) {
 		}
 
 		//validate the item
-		if(useStrictValidation){
-			for(var c in columns){
-				if(c == model.idAttribute){continue;}
-				if(!_.contains(_.keys(attrObj), c)){
-					Ti.API.error("[SQL REST API] ITEM NOT VALID - REASON: " +c+ " is not present");
+		if (useStrictValidation) {
+			for (var c in columns) {
+				if (c == model.idAttribute) {
+					continue;
+				}
+				if (!_.contains(_.keys(attrObj), c)) {
+					Ti.API.error("[SQL REST API] ITEM NOT VALID - REASON: " + c + " is not present");
 					return;
 				}
 			}
 		}
 
-
 		// Create arrays for insert query
 		var names = [], values = [], q = [];
 		for (var k in columns) {
 			names.push(k);
-			if( _.isObject(attrObj[k]) ) {
+			if (_.isObject(attrObj[k])) {
 				values.push(JSON.stringify(attrObj[k]));
 			} else {
 				values.push(attrObj[k]);
 			}
 			q.push('?');
 		}
-		if(lastModifiedColumn && _.isUndefined(params.disableLastModified)){
-			values[_.indexOf(names, lastModifiedColumn)] = moment().format('YYYY-MM-DD HH:mm:ss'); //"DATETIME('NOW')";
+		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
+			values[_.indexOf(names, lastModifiedColumn)] = moment().format('YYYY-MM-DD HH:mm:ss');
 		}
 
 		// Assemble create query
@@ -530,26 +571,44 @@ function Sync(method, model, opts) {
 		return attrObj;
 	}
 
-	function readSQL() {
-		if(DEBUG){
+	function readSQL(data) {
+		if (DEBUG) {
 			Ti.API.debug("[SQL REST API] readSQL");
 		}
 		var sql = opts.query || 'SELECT * FROM ' + table;
 
+		// we want the exact server response returned by the adapter
+		if (params.returnExactServerResponse && data) {
+			opts.sql = opts.sql || {};
+			opts.sql.where = opts.sql.where || {};
+
+			if (_.isEmpty(data)) {
+				// No result
+				opts.sql.where.id = "1=2";
+			} else {
+				// Find all idAttribute in the server response
+				var ids = [];
+				_.each(data, function(element) {
+					ids.push(element[model.idAttribute]);
+				});
+				// this will select IDs in the sql query
+				opts.sql.where.id = ids;
+			}
+		}
+
 		// execute the select query
 		db = Ti.Database.open(dbName);
-
 
 		if (opts.query) {
 			var rs = db.execute(opts.query.sql, opts.query.params);
 		} else {
-			if(opts.data){ //extend sql where with data
+			if (opts.data) {//extend sql where with data
 				opts.sql = opts.sql || {};
 				opts.sql.where = opts.sql.where || {};
-				_.extend(opts.sql.where, opts.data );
+				_.extend(opts.sql.where, opts.data);
 			}
 			var sql = _buildQuery(table, opts.sql || opts);
-			if(DEBUG){
+			if (DEBUG) {
 				Ti.API.debug("[SQL REST API] SQL QUERY: " + sql);
 			}
 			var rs = db.execute(sql);
@@ -570,7 +629,7 @@ function Sync(method, model, opts) {
 				o[fn] = rs.fieldByName(fn);
 			});
 			values.push(o);
-			if(isCollection){
+			if (isCollection) {
 				//push the models
 				var m = new model.config.Model(o);
 				model.models.push(m);
@@ -586,20 +645,22 @@ function Sync(method, model, opts) {
 		// shape response based on whether it's a model or collection
 		model.length = len;
 
-		if(DEBUG){Ti.API.debug("readSQL length: " + len);}
+		if (DEBUG) {
+			Ti.API.debug("readSQL length: " + len);
+		}
 		return len === 1 ? resp = values[0] : resp = values;
 	}
 
 	function updateSQL(data) {
 		var attrObj = {};
-		if(DEBUG){
+		if (DEBUG) {
 			Ti.API.debug("updateSQL data:");
 			Ti.API.debug(data);
 		}
-		if(data){
+		if (data) {
 			attrObj = data;
 		} else {
-			if(!isCollection){
+			if (!isCollection) {
 				attrObj = model.toJSON();
 			} else {
 				Ti.API.error("Its a collection - error!");
@@ -609,9 +670,9 @@ function Sync(method, model, opts) {
 		// Create arrays for insert query
 		var names = [], values = [], q = [];
 		for (var k in columns) {
-			if(!_.isUndefined(attrObj[k])){ //only update those who are in the data
-				names.push(k+'=?');
-				if( _.isObject(attrObj[k]) ) {
+			if (!_.isUndefined(attrObj[k])) {//only update those who are in the data
+				names.push(k + '=?');
+				if (_.isObject(attrObj[k])) {
 					values.push(JSON.stringify(attrObj[k]));
 				} else {
 					values.push(attrObj[k]);
@@ -623,7 +684,7 @@ function Sync(method, model, opts) {
 		// compose the update query
 		var sql = 'UPDATE ' + table + ' SET ' + names.join(',') + ' WHERE ' + model.idAttribute + '=?';
 		values.push(attrObj[model.idAttribute]);
-		if(DEBUG){
+		if (DEBUG) {
 			Ti.API.debug("updateSQL sql: " + sql);
 			Ti.API.debug(values);
 		}
@@ -631,8 +692,8 @@ function Sync(method, model, opts) {
 		db = Ti.Database.open(dbName);
 		db.execute(sql, values);
 
-		if(lastModifiedColumn && _.isUndefined(params.disableLastModified)){
-			var updateSQL = "UPDATE " + table + " SET " + lastModifiedColumn + " = DATETIME('NOW') WHERE " + model.idAttribute +"=?";
+		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
+			var updateSQL = "UPDATE " + table + " SET " + lastModifiedColumn + " = DATETIME('NOW') WHERE " + model.idAttribute + "=?";
 			db.execute(updateSQL, attrObj[model.idAttribute]);
 		}
 
@@ -680,10 +741,10 @@ function Sync(method, model, opts) {
 		return output;
 	}
 
-	function sqlLastModifiedItem(){
-		if(singleModelRequest || !isCollection){
+	function sqlLastModifiedItem() {
+		if (singleModelRequest || !isCollection) {
 			//model
-			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL AND ' + model.idAttribute + '='+ singleModelRequest +' ORDER BY ' + lastModifiedColumn + ' LIMIT 0,1';
+			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL AND ' + model.idAttribute + '=' + singleModelRequest + ' ORDER BY ' + lastModifiedColumn + ' LIMIT 0,1';
 		} else {
 			//collection
 			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL ORDER BY ' + lastModifiedColumn + ' LIMIT 0,1';
@@ -692,41 +753,39 @@ function Sync(method, model, opts) {
 		db = Ti.Database.open(dbName);
 		rs = db.execute(sql);
 		var output = null;
-		if(rs.isValidRow()) {
-			output=rs.field(0);
+		if (rs.isValidRow()) {
+			output = rs.field(0);
 		}
 		rs.close();
 		db.close();
 		return output;
 	}
 
-
-	function parseJSON(_response, parentNode){
-		var data = JSON.parse(_response.responseText);
-		if(!_.isUndefined(parentNode)){
+	function parseJSON(_response, parentNode) {
+		var data = _response.responseJSON; //JSON.parse(_response.responseText);
+		if (!_.isUndefined(parentNode)) {
 			data = _.isFunction(parentNode) ? parentNode(data) : traverseProperties(data, parentNode);
 		}
-		if(DEBUG){
+		if (DEBUG) {
 			Ti.API.info("[SQL REST API] server response: ");
-			Ti.API.debug(data)
+			Ti.API.debug(data);
 		}
 		return data;
 	}
 
 }
 
-
 /////////////////////////////////////////////
 // SQL HELPERS
 /////////////////////////////////////////////
 
-var encodeData = function(obj, url) {
+function encodeData(obj, url) {
 	var str = [];
-	for(var p in obj){
+	for (var p in obj) {
 		str.push(Ti.Network.encodeURIComponent(p) + "=" + Ti.Network.encodeURIComponent(obj[p]));
 	}
 
-	if(_.indexOf(url, "?") == -1) {
+	if (_.indexOf(url, "?") == -1) {
 		return url + "?" + str.join("&");
 	} else {
 		return url + "&" + str.join("&");
@@ -748,7 +807,7 @@ function _buildQuery(table, opts) {
 	var sql = 'SELECT *';
 	if (opts.select) {
 		sql = 'SELECT ';
-		if ( _.isArray(opts.select) ) {
+		if (_.isArray(opts.select)) {
 			sql += opts.select.join(", ");
 		} else {
 			sql += opts.select;
@@ -760,8 +819,8 @@ function _buildQuery(table, opts) {
 	if (opts.where) {
 		var where;
 		if (_.isArray(opts.where)) {
-            where = opts.where.join(' AND ');
-        } else if ( typeof opts.where === 'object') {
+			where = opts.where.join(' AND ');
+		} else if ( typeof opts.where === 'object') {
 			where = [];
 			where = whereBuilder(where, opts.where);
 			where = where.join(' AND ');
@@ -771,11 +830,11 @@ function _buildQuery(table, opts) {
 
 		sql += ' WHERE ' + where;
 	} else {
-		sql += ' WHERE 1=1'
+		sql += ' WHERE 1=1';
 	}
 	if (opts.orderBy) {
 		var order;
-		if ( _.isArray(opts.orderBy)) {
+		if (_.isArray(opts.orderBy)) {
 			order = opts.orderBy.join(', ');
 		} else {
 			order = opts.orderBy;
@@ -801,7 +860,7 @@ function _buildQuery(table, opts) {
 	if (opts.except) {
 		sql += ' EXCEPT ' + _buildQuery(opts.EXCEPT);
 	}
-	if( opts.like){
+	if (opts.like) {
 		var like;
 		if ( typeof opts.like === 'object') {
 			like = [];
@@ -809,10 +868,10 @@ function _buildQuery(table, opts) {
 				like.push(f + ' LIKE "%' + value + '%"');
 			});
 			like = like.join(' AND ');
-			sql += ' AND '+like;
+			sql += ' AND ' + like;
 		}
 	}
-	if( opts.likeor){
+	if (opts.likeor) {
 		var likeor;
 		if ( typeof opts.likeor === 'object') {
 			likeor = [];
@@ -820,22 +879,22 @@ function _buildQuery(table, opts) {
 				likeor.push(f + ' LIKE "%' + value + '%"');
 			});
 			likeor = likeor.join(' OR ');
-			sql += ' AND '+likeor;
+			sql += ' AND ' + likeor;
 		}
 	}
 
 	return sql;
 }
 
-function whereBuilder(where, data){
+function whereBuilder(where, data) {
 	_.each(data, function(v, f) {
-		if(_.isArray(v) ) { //select multiple items
+		if (_.isArray(v)) {//select multiple items
 			var innerWhere = [];
 			_.each(v, function(value) {
 				innerWhere.push(f + " = " + _valueType(value));
 			});
 			where.push(innerWhere.join(' OR '));
-		} else if(_.isObject(v)){
+		} else if (_.isObject(v)) {
 			where = whereBuilder(where, v);
 		} else {
 			where.push(f + " = " + _valueType(v));
@@ -844,12 +903,12 @@ function whereBuilder(where, data){
 	return where;
 }
 
-function traverseProperties(object, string){
-   var explodedString = string.split('.');
-   for (i = 0, l = explodedString.length; i<l; i++){
-      object = object[explodedString[i]];
-   }
-   return object;
+function traverseProperties(object, string) {
+	var explodedString = string.split('.');
+	for ( i = 0, l = explodedString.length; i < l; i++) {
+		object = object[explodedString[i]];
+	}
+	return object;
 }
 
 /////////////////////////////////////////////
@@ -1054,10 +1113,12 @@ module.exports.afterModelCreate = function(Model, name) {
 
 	// create and migrate the Model class
 	Model || ( Model = {});
-	Model.prototype.config.Model = Model; // needed for fetch operations to initialize the collection from persistent store
+	Model.prototype.config.Model = Model;
+	// needed for fetch operations to initialize the collection from persistent store
 	Model.prototype.idAttribute = Model.prototype.config.adapter.idAttribute;
 	Migrate(Model);
-	cache.Model[name] = Model; // Add the Model class to the cache
+	cache.Model[name] = Model;
+	// Add the Model class to the cache
 
 	return Model;
 };
