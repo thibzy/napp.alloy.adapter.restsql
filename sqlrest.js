@@ -124,7 +124,7 @@ function apiCall(_options, _callback) {
 		//we are online - talk with Rest API
 
 		var xhr = Ti.Network.createHTTPClient({
-			timeout : _options.timeout || 7000
+			timeout : _options.timeout || 10000
 		});
 
 		//Prepare the request
@@ -132,7 +132,7 @@ function apiCall(_options, _callback) {
 
 		xhr.onload = function() {
 			var responseJSON, success = true, error;
-			
+
 			// parse JSON
 			try {
 				responseJSON = JSON.parse(xhr.responseText);
@@ -154,25 +154,26 @@ function apiCall(_options, _callback) {
 
 		//Handle error
 		xhr.onerror = function() {
-			var responseJSON;
+			var responseJSON, error;
 			try {
 				responseJSON = JSON.parse(xhr.responseText);
 			} catch (e) {
+			    error = e.message;
 			}
 
 			_callback({
 				success : false,
 				status : "error",
 				code : xhr.status,
-				data : e.error,
+				data : error,
 				responseText : xhr.responseText,
 				responseJSON : responseJSON || null
 			});
-			
+
 			Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
 			Ti.API.error('[SQL REST API] apiCall ERROR CODE: ' + xhr.status);
 		};
-		
+
 		// headers
 		for (var header in _options.headers) {
 			xhr.setRequestHeader(header, _options.headers[header]);
@@ -181,7 +182,7 @@ function apiCall(_options, _callback) {
 		if (_options.beforeSend) {
 			_options.beforeSend(xhr);
 		}
-		
+
 		xhr.send(_options.data || null);
 	} else {
 		//we are offline
@@ -303,14 +304,14 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//offline or error
-					resp = saveData();
+					// resp = saveData();
 					if (_.isUndefined(_response.offline)) {
 						// error
-						_.isFunction(params.error) && params.error(resp);
+						_.isFunction(params.error) && params.error(_response);
 					} else {
 						//offline - still a data success
-						resp = saveData();
-						_.isFunction(params.success) && params.success(resp);
+						// resp = saveData();
+						_.isFunction(params.success) && params.success(_response);
 					}
 				}
 			});
@@ -403,14 +404,14 @@ function Sync(method, model, opts) {
 					_.isFunction(params.success) && params.success(resp);
 				} else {
 					//error or offline - save & use local data
-					resp = saveData();
+					// resp = saveData();
 					if (_.isUndefined(_response.offline)) {
 						//error
-						_.isFunction(params.error) && params.error(resp);
+						_.isFunction(params.error) && params.error(_response);
 					} else {
 						//offline - still a data success
-						resp = saveData();
-						_.isFunction(params.success) && params.success(resp);
+						// resp = saveData();
+						_.isFunction(params.success) && params.success(_response);
 					}
 				}
 			});
@@ -433,14 +434,14 @@ function Sync(method, model, opts) {
 					resp = deleteSQL();
 					_.isFunction(params.success) && params.success(resp);
 				} else {
-					resp = deleteSQL();
+					// resp = deleteSQL();
 					if (_.isUndefined(_response.offline)) {
 						//error
-						_.isFunction(params.error) && params.error(resp);
+						_.isFunction(params.error) && params.error(_response);
 					} else {
 						//offline - still a data success
 						resp = deleteSQL();
-						_.isFunction(params.success) && params.success(resp);
+						_.isFunction(params.success) && params.success(_response);
 					}
 				}
 			});
