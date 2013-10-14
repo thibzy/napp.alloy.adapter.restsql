@@ -176,6 +176,7 @@ function apiCall(_options, _callback) {
 				responseJSON : responseJSON || null
 			});
 
+            Ti.App.fireEvent('app:httpError', {code : xhr.status, responseJSON : responseJSON || null});
 			Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
 			Ti.API.error('[SQL REST API] apiCall ERROR CODE: ' + xhr.status);
 		};
