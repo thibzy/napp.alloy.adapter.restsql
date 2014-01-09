@@ -1,15 +1,15 @@
 /**
  * SQL Rest Adapter for Titanium Alloy
  * @author Mads Møller
- * @version 0.1.30
+ * @version 0.1.37
  * Copyright Napp ApS
  * www.napp.dk
  */
 
-var _ = require('alloy/underscore')._, util = require('alloy/sync/util');
-
-//until this issue is fixed: https://jira.appcelerator.org/browse/TIMOB-11752
-var Alloy = require("alloy"), Backbone = Alloy.Backbone, moment = require('alloy/moment');
+var _ = require('alloy/underscore')._, 
+	Alloy = require("alloy"), 
+	Backbone = Alloy.Backbone, 
+	moment = require('alloy/moment');
 
 // The database name used when none is specified in the
 // model configuration.
@@ -101,7 +101,7 @@ function Migrator(config, transactionDb) {
 		}
 		if (!found && this.idAttribute === ALLOY_ID_DEFAULT) {
 			columns.push(this.idAttribute);
-			values.push(util.guid());
+			values.push(guid());
 			qs.push("?");
 		}
 		this.db.execute("INSERT INTO " + this.table + " (" + columns.join(",") + ") VALUES (" + qs.join(",") + ");", values);
@@ -143,8 +143,8 @@ function apiCall(_options, _callback) {
 			try {
 				responseJSON = JSON.parse(xhr.responseText);
 			} catch (e) {
-				Ti.API.error('[SQL REST API] apiCall ERROR: ' + e.message);
-				Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
+				Ti.API.error('[SQL REST API] apiCall PARSE ERROR: ' + e.message);
+				Ti.API.error('[SQL REST API] apiCall PARSE ERROR: ' + xhr.responseText);
 				success = false;
 				error = e.message;
 			}
@@ -159,18 +159,19 @@ function apiCall(_options, _callback) {
 		};
 
 		//Handle error
-		xhr.onerror = function() {
+		xhr.onerror = function(err) {
 			var responseJSON, error;
 			try {
 				responseJSON = JSON.parse(xhr.responseText);
 			} catch (e) {
-			    error = e.message;
+				error = e.message;
 			}
 
 			_callback({
 				success : false,
 				status : "error",
 				code : xhr.status,
+				error: err.error,
 				data : error,
 				responseText : xhr.responseText,
 				responseJSON : responseJSON || null
@@ -179,6 +180,7 @@ function apiCall(_options, _callback) {
             Ti.App.fireEvent('app:httpError', {code : xhr.status, responseJSON : responseJSON || null});
 			Ti.API.error('[SQL REST API] apiCall ERROR: ' + xhr.responseText);
 			Ti.API.error('[SQL REST API] apiCall ERROR CODE: ' + xhr.status);
+			Ti.API.error('[SQL REST API] apiCall ERROR MSG: ' + err.error);
 		};
 
 		// headers
@@ -204,14 +206,24 @@ function apiCall(_options, _callback) {
 function Sync(method, model, opts) {
 	var table = model.config.adapter.collection_name, columns = model.config.columns, dbName = model.config.adapter.db_name || ALLOY_DB_DEFAULT, resp = null, db;
 	model.idAttribute = model.config.adapter.idAttribute;
-	//fix for collection
+	
+	// fix for collection
 	var DEBUG = model.config.debug;
+	
+	// last modified 
 	var lastModifiedColumn = model.config.adapter.lastModifiedColumn;
+	var addModifedToUrl = model.config.adapter.addModifedToUrl;
+	var lastModifiedDateFormat = model.config.adapter.lastModifiedDateFormat;
+	
 	var parentNode = model.config.parentNode;
 	var useStrictValidation = model.config.useStrictValidation;
 	var initFetchWithLocalData = model.config.initFetchWithLocalData;
+	var deleteAllOnFetch = model.config.deleteAllOnFetch;
+	
 	var isCollection = ( model instanceof Backbone.Collection) ? true : false;
-
+	var returnErrorResponse = model.config.returnErrorResponse;
+	
+	
 	var singleModelRequest = null;
 	if (lastModifiedColumn) {
 		if (opts.sql && opts.sql.where) {
@@ -244,6 +256,15 @@ function Sync(method, model, opts) {
 		}
 	}
 
+	// We need to ensure that we have a base url.
+	if (!params.url) {
+		params.url = (model.config.URL || model.url());
+		if (!params.url) {
+			Ti.API.error("[SQL REST API] ERROR: NO BASE URL");
+			return;
+		}
+	}
+	
 	if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 		//send last modified model datestamp to the remote server
 		var lastModifiedValue = "";
@@ -255,15 +276,6 @@ function Sync(method, model, opts) {
 			}
 		}
 		params.headers['Last-Modified'] = lastModifiedValue;
-	}
-
-	// We need to ensure that we have a base url.
-	if (!params.url) {
-		params.url = (model.config.URL || model.url());
-		if (!params.url) {
-			Ti.API.error("[SQL REST API] ERROR: NO BASE URL");
-			return;
-		}
 	}
 
 	// For older servers, emulate JSON by encoding the request into an HTML-form.
@@ -314,7 +326,7 @@ function Sync(method, model, opts) {
 					// resp = saveData();
 					if (_.isUndefined(_response.offline)) {
 						// error
-						_.isFunction(params.error) && params.error(_response);
+						_.isFunction(params.error) && params.error(returnErrorResponse ? _response : resp);
 					} else {
 						//offline - still a data success
 						resp = saveData();
@@ -324,7 +336,8 @@ function Sync(method, model, opts) {
 			});
 			break;
 		case 'read':
-			if (model.id) {
+		
+			if (!isCollection && model.id) {
 				// find model by id
 				params.url = params.url + '/' + model.id;
 			}
@@ -338,6 +351,14 @@ function Sync(method, model, opts) {
 			if (params.urlparams) {
 				// build url with parameters
 				params.url = encodeData(params.urlparams, params.url);
+			}
+			
+			// check is all the necessary info is in place for last modified
+			if (lastModifiedColumn && addModifedToUrl && lastModifiedValue) {
+				// add last modified date to url
+				var obj = {};
+				obj[lastModifiedColumn] = lastModifiedValue;
+				params.url = encodeData(obj, params.url);
 			}
 
 			if (DEBUG) {
@@ -356,6 +377,10 @@ function Sync(method, model, opts) {
 
 			apiCall(params, function(_response) {
 				if (_response.success) {
+					if(deleteAllOnFetch){
+						deleteAllSQL();
+					}
+					
 					var data = parseJSON(_response, parentNode);
 					if (_.isUndefined(params.localOnly)) {
 						//we dont want to manipulate the data on localOnly requests
@@ -369,7 +394,7 @@ function Sync(method, model, opts) {
 					resp = readSQL();
 					if (_.isUndefined(_response.offline)) {
 						//error
-						_.isFunction(params.error) && params.error(resp);
+						_.isFunction(params.error) && params.error(returnErrorResponse ? _response : resp);
 					} else {
 						//offline - still a data success
 						_.isFunction(params.success) && params.success(resp);
@@ -414,7 +439,7 @@ function Sync(method, model, opts) {
 					// resp = saveData();
 					if (_.isUndefined(_response.offline)) {
 						//error
-						_.isFunction(params.error) && params.error(_response);
+						_.isFunction(params.error) && params.error(returnErrorResponse ? _response : resp);
 					} else {
 						//offline - still a data success
 						resp = saveData();
@@ -444,7 +469,7 @@ function Sync(method, model, opts) {
 					// resp = deleteSQL();
 					if (_.isUndefined(_response.offline)) {
 						//error
-						_.isFunction(params.error) && params.error(_response);
+						_.isFunction(params.error) && params.error(returnErrorResponse ? _response : resp);
 					} else {
 						//offline - still a data success
 						resp = deleteSQL();
@@ -515,7 +540,7 @@ function Sync(method, model, opts) {
 		if (!attrObj[model.idAttribute]) {
 			if (model.idAttribute === ALLOY_ID_DEFAULT) {
 				// alloy-created GUID field
-				attrObj.id = util.guid();
+				attrObj.id = guid();
 				attrObj[model.idAttribute] = attrObj.id;
 			} else {
 				// idAttribute not assigned by alloy. Leave it empty and
@@ -549,8 +574,10 @@ function Sync(method, model, opts) {
 			}
 			q.push('?');
 		}
+		// Last Modified logic
+		// 
 		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
-			values[_.indexOf(names, lastModifiedColumn)] = moment().format('YYYY-MM-DD HH:mm:ss');
+			values[_.indexOf(names, lastModifiedColumn)] = lastModifiedDateFormat ? moment().format(lastModifiedDateFormat) : moment().format('YYYY-MM-DD HH:mm:ss');
 		}
 
 		// Assemble create query
@@ -699,7 +726,7 @@ function Sync(method, model, opts) {
 		// execute the update
 		db = Ti.Database.open(dbName);
 		db.execute(sql, values);
-
+		
 		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 			var updateSQL = "UPDATE " + table + " SET " + lastModifiedColumn + " = DATETIME('NOW') WHERE " + model.idAttribute + "=?";
 			db.execute(updateSQL, attrObj[model.idAttribute]);
@@ -719,6 +746,13 @@ function Sync(method, model, opts) {
 
 		model.id = null;
 		return model.toJSON();
+	}
+	
+	function deleteAllSQL(){
+		var sql = 'DELETE FROM ' + table;
+		db = Ti.Database.open(dbName);
+		db.execute(sql);
+		db.close();
 	}
 
 	function sqlCurrentModels() {
@@ -752,10 +786,10 @@ function Sync(method, model, opts) {
 	function sqlLastModifiedItem() {
 		if (singleModelRequest || !isCollection) {
 			//model
-			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL AND ' + model.idAttribute + '=' + singleModelRequest + ' ORDER BY ' + lastModifiedColumn + ' LIMIT 0,1';
+			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL AND ' + model.idAttribute + '=' + singleModelRequest + ' ORDER BY ' + lastModifiedColumn + ' DESC LIMIT 0,1';
 		} else {
 			//collection
-			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL ORDER BY ' + lastModifiedColumn + ' LIMIT 0,1';
+			var sql = 'SELECT ' + lastModifiedColumn + ' FROM ' + table + ' WHERE ' + lastModifiedColumn + ' IS NOT NULL ORDER BY ' + lastModifiedColumn + ' DESC LIMIT 0,1';
 		}
 
 		db = Ti.Database.open(dbName);
@@ -840,6 +874,45 @@ function _buildQuery(table, opts) {
 	} else {
 		sql += ' WHERE 1=1';
 	}
+	
+	if (opts.like) {
+		var like;
+		if ( typeof opts.like === 'object') {
+			like = [];
+			_.each(opts.like, function(value, f) {
+				like.push(f + ' LIKE "%' + value + '%"');
+			});
+			like = like.join(' AND ');
+			sql += ' AND ' + like;
+		}
+	}
+	
+	if (opts.likeor) {
+		var likeor;
+		if ( typeof opts.likeor === 'object') {
+			likeor = [];
+			_.each(opts.likeor, function(value, f) {
+				likeor.push(f + ' LIKE "%' + value + '%"');
+			});
+			likeor = likeor.join(' OR ');
+			sql += ' AND ' + likeor;
+		}
+	}
+	
+	if (opts.union) {
+		sql += ' UNION ' + _buildQuery(opts.union);
+	}
+	if (opts.unionAll) {
+		sql += ' UNION ALL ' + _buildQuery(opts.unionAll);
+	}
+	if (opts.intersect) {
+		sql += ' INTERSECT ' + _buildQuery(opts.intersect);
+	}
+	if (opts.except) {
+		sql += ' EXCEPT ' + _buildQuery(opts.EXCEPT);
+	}
+	
+	// order by and limit should be in the end of the statement
 	if (opts.orderBy) {
 		var order;
 		if (_.isArray(opts.orderBy)) {
@@ -856,40 +929,7 @@ function _buildQuery(table, opts) {
 			sql += ' OFFSET ' + opts.offset;
 		}
 	}
-	if (opts.union) {
-		sql += ' UNION ' + _buildQuery(opts.union);
-	}
-	if (opts.unionAll) {
-		sql += ' UNION ALL ' + _buildQuery(opts.unionAll);
-	}
-	if (opts.intersect) {
-		sql += ' INTERSECT ' + _buildQuery(opts.intersect);
-	}
-	if (opts.except) {
-		sql += ' EXCEPT ' + _buildQuery(opts.EXCEPT);
-	}
-	if (opts.like) {
-		var like;
-		if ( typeof opts.like === 'object') {
-			like = [];
-			_.each(opts.like, function(value, f) {
-				like.push(f + ' LIKE "%' + value + '%"');
-			});
-			like = like.join(' AND ');
-			sql += ' AND ' + like;
-		}
-	}
-	if (opts.likeor) {
-		var likeor;
-		if ( typeof opts.likeor === 'object') {
-			likeor = [];
-			_.each(opts.likeor, function(value, f) {
-				likeor.push(f + ' LIKE "%' + value + '%"');
-			});
-			likeor = likeor.join(' OR ');
-			sql += ' AND ' + likeor;
-		}
-	}
+	
 
 	return sql;
 }
@@ -1130,5 +1170,13 @@ module.exports.afterModelCreate = function(Model, name) {
 
 	return Model;
 };
+
+function S4() {
+	return ((1 + Math.random()) * 65536 | 0).toString(16).substring(1);
+}
+
+function guid() {
+	return S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4();
+}
 
 module.exports.sync = Sync;

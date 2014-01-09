@@ -26,7 +26,8 @@ Simple add the following to your model in `PROJECT_FOLDER/app/models/`.
 				"collection_name" : "modelname",
 				"idAttribute" : "id",
 				
-				//optimise the amount of data transfer from remote server to app
+				// optimise the amount of data transfer from remote server to app
+				"addModifedToUrl": true,
 				"lastModifiedColumn": "modified"
 			},
 			
@@ -34,7 +35,10 @@ Simple add the following to your model in `PROJECT_FOLDER/app/models/`.
 			"headers": { //your custom headers
 	            "Accept": "application/vnd.stackmob+json; version=0",
 		        "X-StackMob-API-Key": "your-stackmob-key"
-	        }
+	        },
+	        
+	        // delete all models on fetch
+			"deleteAllOnFetch": true
 		},
 		extendModel : function(Model) {
 			_.extend(Model.prototype, {});
@@ -153,6 +157,16 @@ Set this property to true, if you want to get the local data immediately, and ge
 	}
 
 
+### returnErrorResponse
+
+Set this proerty to true if you want the error response object from the remote server. Default behaviour is not to return this, but return the data stored locally. 
+
+	config: {
+		...
+		"returnErrorResponse" : true
+	}
+
+
 ### Extended SQL interface
 
 You can perform a local query, and use a bunch of SQL commands without having to write the actual query. The query is also support btw.
@@ -179,6 +193,27 @@ collection.fetch({
 ```
 
 ## Changelog
+
+**v0.1.37**  
+Updated to use Alloy 1.3.0. 
+
+**v0.1.36**  
+Bugfix for building the sql statement. If orderby, likeor and limit was used at the same time, the query was incorrect. This has been fixed. 
+
+**v0.1.35**  
+Added support for deleting all models on fetch. Use `deleteAllOnFetch` in adapter config. 
+
+**v0.1.34**  
+Added support for `addModifedToUrl` and `lastModifiedDateFormat` to better control over the outcome of `Last Modified`. 
+
+**v0.1.33**  
+Bugfix for special case where collection has assigned an id and hence fetch will only return a single model. 
+
+**v0.1.32**  
+Added `returnErrorResponse` enables the developer to get the error response object from the remote server. 
+
+**v0.1.31**  
+Bugfix for Last Modified Column.  
 
 **v0.1.30**  
 JSON.parse errors are now caught.  
