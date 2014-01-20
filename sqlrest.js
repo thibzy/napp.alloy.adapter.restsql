@@ -6,9 +6,9 @@
  * www.napp.dk
  */
 
-var _ = require('alloy/underscore')._, 
-	Alloy = require("alloy"), 
-	Backbone = Alloy.Backbone, 
+var _ = require('alloy/underscore')._,
+	Alloy = require("alloy"),
+	Backbone = Alloy.Backbone,
 	moment = require('alloy/moment');
 
 // The database name used when none is specified in the
@@ -124,7 +124,8 @@ function apiCall(_options, _callback) {
 		//we are online - talk with Rest API
 
 		var xhr = Ti.Network.createHTTPClient({
-			timeout : _options.timeout || 10000
+			timeout : _options.timeout || 10000,
+            validatesSecureCertificate: false // HTTPS
 		});
 
 		//Prepare the request
@@ -206,24 +207,24 @@ function apiCall(_options, _callback) {
 function Sync(method, model, opts) {
 	var table = model.config.adapter.collection_name, columns = model.config.columns, dbName = model.config.adapter.db_name || ALLOY_DB_DEFAULT, resp = null, db;
 	model.idAttribute = model.config.adapter.idAttribute;
-	
+
 	// fix for collection
 	var DEBUG = model.config.debug;
-	
-	// last modified 
+
+	// last modified
 	var lastModifiedColumn = model.config.adapter.lastModifiedColumn;
 	var addModifedToUrl = model.config.adapter.addModifedToUrl;
 	var lastModifiedDateFormat = model.config.adapter.lastModifiedDateFormat;
-	
+
 	var parentNode = model.config.parentNode;
 	var useStrictValidation = model.config.useStrictValidation;
 	var initFetchWithLocalData = model.config.initFetchWithLocalData;
 	var deleteAllOnFetch = model.config.deleteAllOnFetch;
-	
+
 	var isCollection = ( model instanceof Backbone.Collection) ? true : false;
 	var returnErrorResponse = model.config.returnErrorResponse;
-	
-	
+
+
 	var singleModelRequest = null;
 	if (lastModifiedColumn) {
 		if (opts.sql && opts.sql.where) {
@@ -264,7 +265,7 @@ function Sync(method, model, opts) {
 			return;
 		}
 	}
-	
+
 	if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 		//send last modified model datestamp to the remote server
 		var lastModifiedValue = "";
@@ -336,7 +337,7 @@ function Sync(method, model, opts) {
 			});
 			break;
 		case 'read':
-		
+
 			if (!isCollection && model.id) {
 				// find model by id
 				params.url = params.url + '/' + model.id;
@@ -352,7 +353,7 @@ function Sync(method, model, opts) {
 				// build url with parameters
 				params.url = encodeData(params.urlparams, params.url);
 			}
-			
+
 			// check is all the necessary info is in place for last modified
 			if (lastModifiedColumn && addModifedToUrl && lastModifiedValue) {
 				// add last modified date to url
@@ -380,7 +381,7 @@ function Sync(method, model, opts) {
 					if(deleteAllOnFetch){
 						deleteAllSQL();
 					}
-					
+
 					var data = parseJSON(_response, parentNode);
 					if (_.isUndefined(params.localOnly)) {
 						//we dont want to manipulate the data on localOnly requests
@@ -575,7 +576,7 @@ function Sync(method, model, opts) {
 			q.push('?');
 		}
 		// Last Modified logic
-		// 
+		//
 		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 			values[_.indexOf(names, lastModifiedColumn)] = lastModifiedDateFormat ? moment().format(lastModifiedDateFormat) : moment().format('YYYY-MM-DD HH:mm:ss');
 		}
@@ -726,7 +727,7 @@ function Sync(method, model, opts) {
 		// execute the update
 		db = Ti.Database.open(dbName);
 		db.execute(sql, values);
-		
+
 		if (lastModifiedColumn && _.isUndefined(params.disableLastModified)) {
 			var updateSQL = "UPDATE " + table + " SET " + lastModifiedColumn + " = DATETIME('NOW') WHERE " + model.idAttribute + "=?";
 			db.execute(updateSQL, attrObj[model.idAttribute]);
@@ -747,7 +748,7 @@ function Sync(method, model, opts) {
 		model.id = null;
 		return model.toJSON();
 	}
-	
+
 	function deleteAllSQL(){
 		var sql = 'DELETE FROM ' + table;
 		db = Ti.Database.open(dbName);
@@ -874,7 +875,7 @@ function _buildQuery(table, opts) {
 	} else {
 		sql += ' WHERE 1=1';
 	}
-	
+
 	if (opts.like) {
 		var like;
 		if ( typeof opts.like === 'object') {
@@ -886,7 +887,7 @@ function _buildQuery(table, opts) {
 			sql += ' AND ' + like;
 		}
 	}
-	
+
 	if (opts.likeor) {
 		var likeor;
 		if ( typeof opts.likeor === 'object') {
@@ -898,7 +899,7 @@ function _buildQuery(table, opts) {
 			sql += ' AND ' + likeor;
 		}
 	}
-	
+
 	if (opts.union) {
 		sql += ' UNION ' + _buildQuery(opts.union);
 	}
@@ -911,7 +912,7 @@ function _buildQuery(table, opts) {
 	if (opts.except) {
 		sql += ' EXCEPT ' + _buildQuery(opts.EXCEPT);
 	}
-	
+
 	// order by and limit should be in the end of the statement
 	if (opts.orderBy) {
 		var order;
@@ -929,7 +930,7 @@ function _buildQuery(table, opts) {
 			sql += ' OFFSET ' + opts.offset;
 		}
 	}
-	
+
 
 	return sql;
 }
